@@ -1,19 +1,32 @@
 import sys
+import random
+from itertools import cycle
 import numpy as np
+import docplex
+import math
+import itertools
+from docplex.cp.model import CpoModel
+from docplex.cp.config import context
+from docplex.cp.solver.solver_listener import CpoSolverListener
+context.solver.agent = 'local'
+context.solver.local.execfile = '/Users/Emily/Documents/CPLEX_Studio128/cpoptimizer/bin/x86-64_osx/cpoptimizer'
+context.solver.verbose = 0
+f = 0.5 # each ifp is assigned to some fraction of teams
+r = 0.2 # some fraction is made at random
+i = 150 # number of teams
+j = 5 # number of tasks
+assignment = np.zeros((i, j)) #matrix storing assignments
+k1 = int(math.ceil(r*f*i)) # number of random assignments
+l = range(0, i) # shuffled list of teams
+random.shuffle(l) #random priority order
 
-from docplex.mp.model import CpoModel
-mdl = CpoModel()
+# round robin assignment to teams
+o = cycle(l)
+for ifp in range(0, j):
+  for k in range(0, k1):
+    assignment[next(o), ifp] = 1
 
-from docplex.mp.model import Model
-m = Model(name='hfc')
 
-# each ifp is assigned to some fraction of teams
-f = 0.5
-
-# some fraction is made at random
-r = 0.2
-
-assignments =
 # N is set of teams
 # L IFP's assigned not closed
 # L_i is number of IFP assigned to i \in N
@@ -28,7 +41,7 @@ assignments =
 # sum of relevant skills over all users in the team
 
 # assign each of the M new IFP's to k2 teams
-k2 = ceiling((1-r)*f*N)
+k2 = int(math.ceil((1-r)*f*i))
 
 # L_i is updated number of IFP's assigned to team i
 
@@ -36,31 +49,80 @@ k2 = ceiling((1-r)*f*N)
 # x_{ij}: is task j assigned to team i
 # y: max assignment over all teams
 # z: min assignment over all teams
+mdl = CpoModel()
+teams = range(i)
+tasks = range(j)
+L = [sum(assignment[team]) for team in teams]
+x = [[mdl.integer_var(min = 0, max = 1) for task in tasks] for team in teams]
 
-# not sure how to initialize L
-L = [0]*i
+def balanced():
+  #L_i is number of IFP's assigned to i
+  y = mdl.integer_var(0, j, "y")
+  z = mdl.integer_var(0, j, "z")
+  mdl.add(mdl.minimize(y-z))
 
-x = mdl.binary_var_matrix(range(1, i+1), range(1,j+1), "x", None)
-y = md.integer_var(0, j,"y")
-z = md.integer_var(0, j, "z")
+  for team in teams:
+     mdl.add(y >= (L[team] + mdl.sum(x[team][task] for task in tasks)))
+
+  for team in teams:
+    mdl.add(z <= (L[team] + mdl.sum(x[team][task] for task in tasks)))
+
+  for task in tasks:
+    mdl.add((mdl.sum(x[team][task] for team in teams)== k2))
+
+  for team in teams:
+    for task in tasks:
+      if assignment[team][task] == 1 :
+        mdl.add((x[team][task] == 0))
+
+  #-----------------------------------------------------------------------------
+  # Solve the model and display the result
+  #-----------------------------------------------------------------------------
+  print("\nSolving model....")
+  msol = mdl.solve(log_output = True)
+
+  # Print solution
+  if msol:
+      print ("Solution: " + msol.get_solve_status() + "\n")
+      print msol[y]
+      print msol[z]
+      print ("Solve time: " + str(round(msol.get_solve_time(), 2)) + "s\n")
+  else:
+      print ("Search status: " + msol.get_solve_status() + "\n")
 
 
-mdl.add(mdl.minimize(y-z))
+def expert():
+  #z_floor = msol[z]-1
+  z_floor = 2
+  #z_ceil = msol[z]+1
+  z_ceil = 3
+  w = np.random.randint(5, size=(i, j)).tolist()
+  x = [[mdl.integer_var(min = 0, max = 1) for task in tasks] for team in teams]
+  def flatten(lst):
+    return list(itertools.chain.from_iterable(lst))
 
-for team in range(1, i+1):
-  mdl.add(y >= L[i-1] + (mdl.sum(x[i][j] for i = team))
+  #mdl.add(mdl.maximize(sum([a*b for a,b in zip(flatten(w), flatten(x))])))
+  lst = []
+  for team in teams:
+    lst.append(mdl.sum(x[team][task] * w[team][task] for task in tasks))
 
-for team in range(1, i+1):
-  mdl.add(y >= L[i-1] + mdl.sum(x[i][j] for i = team))
+  mdl.add(mdl.maximize(mdl.sum(lst)))
 
-for skill in range(1, j+1):
-  mdl.add((mdl.sum(x[i][j] for j = skill) = k2)
+  for team in teams:
+    mdl.add(z_floor <= mdl.sum(x[team][task] for task in tasks) + L[team])
+    mdl.add((mdl.sum(x[team][task] for task in tasks) + L[team])<= max(L[team], z_ceil))
 
-for team in range(1, i+1):
-  for skill in range(1, j+1):
-    x[i][j]
+  for task in tasks:
+    mdl.add((mdl.sum(x[team][task] for team in teams)== k2))
+
+  for team in teams:
+    for task in tasks:
+      if assignment[team][task] == 1 :
+        mdl.add((x[team][task] == 0))
+
+  mdl.export_as_cpo()
+
+expert()
 
 
-# for every
-for i in range()
 
