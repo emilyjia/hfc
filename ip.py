@@ -32,23 +32,26 @@ teams = range(team_count)
 # number of tasks
 task_count = 5
 tasks = range(task_count)
+assignment = np.zeros((team_count, task_count))
+
+# number of random assignments
+k1 = int(math.ceil(rand*frac*team_count))
+# number of non-random assignments
+k2 = int(math.ceil((1-rand)*frac*team_count))
 
 # ------------------------------------------
 # Round robin assignment
 # ------------------------------------------
 
-assignment = np.zeros((team_count, task_count))
-k1 = int(math.ceil(rand*frac*team_count)) # number of random assignments
-priority_order = range(team_count)
-random.shuffle(priority_order) #random priority order
+def round_robin():
+  priority_order = range(team_count)
+  random.shuffle(priority_order) #random priority order
+  order = cycle(priority_order)
+  for ifp in tasks:
+    for k in range(0, k1):
+      assignment[next(order), ifp] = 1
 
-order = cycle(priority_order)
-for ifp in tasks:
-  for k in range(0, k1):
-    assignment[next(order), ifp] = 1
 
-# assign each of the M new IFP's to k2 teams
-k2 = int(math.ceil((1-rand)*frac*team_count))
 
 # ------------------------------------------
 # Set up the model
@@ -58,7 +61,6 @@ k2 = int(math.ceil((1-rand)*frac*team_count))
 
 mdl = CpoModel()
 L = [sum(assignment[team]) for team in teams]
-x = [[mdl.integer_var(min = 0, max = 1) for task in tasks] for team in teams]
 
 
 # ------------------------------------------
@@ -70,6 +72,7 @@ x = [[mdl.integer_var(min = 0, max = 1) for task in tasks] for team in teams]
 
 def balanced():
   #L_i is number of IFP's assigned to i
+  x = [[mdl.integer_var(min = 0, max = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
   y = mdl.integer_var(0, task_count, "y")
   z = mdl.integer_var(0, task_count, "z")
   mdl.add(mdl.minimize(y-z))
@@ -124,7 +127,8 @@ def expert(z_floor, z_ceil):
 # Main
 # ------------------------------------------
 
-def main()
+def main():
+  round_robin()
   z = balanced()
   expert(z-1, z+1)
 
