@@ -10,7 +10,8 @@ from docplex.cp.config import context
 from docplex.cp.solver.solver_listener import CpoSolverListener
 context.solver.agent = 'local'
 context.solver.local.execfile = '/Users/Emily/Documents/CPLEX_Studio128/cpoptimizer/bin/x86-64_osx/cpoptimizer'
-context.solver.verbose = 0
+context.solver.log_output = True
+context.solver.verbose = 5
 f = 0.5 # each ifp is assigned to some fraction of teams
 r = 0.2 # some fraction is made at random
 i = 150 # number of teams
@@ -120,7 +121,8 @@ def expert():
       if assignment[team][task] == 1 :
         mdl.add((x[team][task] == 0))
 
-  mdl.export_as_cpo()
+  mdl.solve(TimeLimit = (3600*3))
+
 
 expert()
 
