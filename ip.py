@@ -93,7 +93,11 @@ def balanced():
 
   print("\nSolving model....")
   msol = mdl.solve(TimeLimit = timelimit)
-  return msol[z]
+
+  for team in teams:
+    for task in tasks:
+      x[team][task] = msol["x{}_{}".format(task, team)]
+
 
 # ------------------------------------------
 # Expert Solution
@@ -129,8 +133,9 @@ def expert(z_floor, z_ceil):
 
 def main():
   round_robin()
-  z = balanced()
-  expert(z-1, z+1)
+  balanced()
+  #z = balanced()
+  #expert(z-1, z+1)
 
 if __name__ == "__main__":
     main()
