@@ -14,7 +14,7 @@ frac = 0.5
 # some fraction is made at random
 rand = 0.2
 # total number of teams
-team_count = 20
+team_count = 150
 teams = range(team_count)
 # number of tasks
 task_count = 5
