@@ -3,8 +3,7 @@ from itertools import cycle
 import numpy as np
 import docplex
 import math
-from docplex.cp.model import CpoModel
-from docplex.cp.config import context
+from docplex.mp.model import Model
 
 # ------------------------------------------
 # Use local cplex solver
@@ -12,11 +11,7 @@ from docplex.cp.config import context
 # Set number of seconds to solve for
 # ------------------------------------------
 
-context.solver.agent = 'local'
-context.solver.local.execfile = '/Users/Emily/Documents/CPLEX_Studio128/cpoptimizer/bin/x86-64_osx/cpoptimizer'
-context.solver.log_output = True
-context.solver.verbose = 5
-timelimit = 10000
+
 
 # ------------------------------------------
 # Constants
@@ -64,37 +59,40 @@ def balanced():
   print "!STARTING BALANCE"
   for i in range(10):
     print "!==========================="
-  mdl = CpoModel()
+  mdl = Model()
+  mdl.context.solver.agent = 'local'
+  #mdl.context.solver.local.execfile = '/Users/Emily/Documents/CPLEX_Studio128/cpoptimizer/bin/x86-64_osx/cpoptimizer'
+  mdl.context.solver.log_output = True
+  # mdl. context.solver.verbose = 5
+  timelimit = 10000
   L = [sum(assignment[team]) for team in teams]
   #L_i is number of IFP's assigned to i
-  x = [[mdl.integer_var(min = 0, max = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
+  x = [[mdl.integer_var(lb = 0, ub = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
   y = mdl.integer_var(0, task_count, "y")
   z = mdl.integer_var(0, task_count, "z")
-  mdl.add(mdl.minimize(y-z))
+  mdl.minimize(y-z)
 
   for team in teams:
-     mdl.add(y >= (L[team] + mdl.sum(x[team][task] for task in tasks)))
+     mdl.add_constraint(y >= (L[team] + mdl.sum(x[team][task] for task in tasks)))
 
   for team in teams:
-    mdl.add(z <= (L[team] + mdl.sum(x[team][task] for task in tasks)))
+    mdl.add_constraint(z <= (L[team] + mdl.sum(x[team][task] for task in tasks)))
 
   for task in tasks:
-    mdl.add((mdl.sum(x[team][task] for team in teams)== k2))
+    mdl.add_constraint((mdl.sum(x[team][task] for team in teams)== k2))
 
   for team in teams:
     for task in tasks:
       if assignment[team][task] == 1 :
-        mdl.add((x[team][task] == 0))
+        mdl.add_constraint((x[team][task] == 0))
 
   msol = mdl.solve(TimeLimit = timelimit)
 
   for team in teams:
     for task in tasks:
       x[team][task] = msol["x{}_{}".format(task, team)]
-
   print "!" + str(msol["y"])
   print "!" + str(msol["z"])
-
   return [msol["y"], msol["z"]]
 
 # ------------------------------------------
@@ -103,27 +101,31 @@ def balanced():
 
 
 def expert(z_floor, z_ceil, w):
-  mdl = CpoModel()
+  mdl = Model()
+  mdl.context.solver.agent = 'local'
+  mdl.context.solver.log_output = True
+  # mdl. context.solver.verbose = 5
+  timelimit = 10000
   L = [sum(assignment[team]) for team in teams]
-  x = [[mdl.integer_var(min = 0, max = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
+  x = [[mdl.integer_var(lb = 0, ub = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
 
   lst = []
   for team in teams:
     lst.append(mdl.sum(x[team][task] * w[team][task] for task in tasks))
 
-  mdl.add(mdl.maximize(mdl.sum(lst)))
+  mdl.maximize(mdl.sum(lst))
 
   for team in teams:
-    mdl.add(z_floor <= mdl.sum(x[team][task] for task in tasks) + L[team])
-    mdl.add((mdl.sum(x[team][task] for task in tasks) + L[team])<= max(L[team], z_ceil))
+    mdl.add_constraint(z_floor <= mdl.sum(x[team][task] for task in tasks) + L[team])
+    mdl.add_constraint((mdl.sum(x[team][task] for task in tasks) + L[team])<= max(L[team], z_ceil))
 
   for task in tasks:
-    mdl.add((mdl.sum(x[team][task] for team in teams)== k2))
+    mdl.add_constraint((mdl.sum(x[team][task] for team in teams)== k2))
 
   for team in teams:
     for task in tasks:
       if assignment[team][task] == 1 :
-        mdl.add((x[team][task] == 0))
+        mdl.add_constraint((x[team][task] == 0))
 
   msol = mdl.solve(TimeLimit = timelimit)
 
