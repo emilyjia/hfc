@@ -14,10 +14,10 @@ frac = 0.5
 # some fraction is made at random
 rand = 0.2
 # total number of teams
-team_count = 150
+team_count = 1500
 teams = range(team_count)
 # number of tasks
-task_count = 5
+task_count = 10
 tasks = range(task_count)
 assignment = np.zeros((team_count, task_count))
 
