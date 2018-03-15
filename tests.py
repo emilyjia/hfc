@@ -93,6 +93,6 @@ def tests():
   print "All tests done!"
 
 
-
+tests()
 
 

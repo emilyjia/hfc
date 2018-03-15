@@ -6,14 +6,6 @@ import math
 from docplex.mp.model import Model
 
 # ------------------------------------------
-# Use local cplex solver
-# Print cplex output
-# Set number of seconds to solve for
-# ------------------------------------------
-
-
-
-# ------------------------------------------
 # Constants
 # ------------------------------------------
 
@@ -48,51 +40,41 @@ def round_robin():
 
 # ------------------------------------------
 # Balanced Solution
-# x_{ij}: is task j assigned to team i
+# x[(i, j)]: is task j assigned to team i
 # y: max assignment over all teams
 # z: min assignment over all teams
 # ------------------------------------------
 
 def balanced():
-  for i in range(10):
-    print "!==========================="
-  print "!STARTING BALANCE"
-  for i in range(10):
-    print "!==========================="
   mdl = Model()
   mdl.context.solver.agent = 'local'
-  #mdl.context.solver.local.execfile = '/Users/Emily/Documents/CPLEX_Studio128/cpoptimizer/bin/x86-64_osx/cpoptimizer'
   mdl.context.solver.log_output = True
-  # mdl. context.solver.verbose = 5
   timelimit = 10000
   L = [sum(assignment[team]) for team in teams]
   #L_i is number of IFP's assigned to i
-  x = [[mdl.integer_var(lb = 0, ub = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
+  x = mdl.binary_var_matrix(team_count, task_count, name = "x")
   y = mdl.integer_var(0, task_count, "y")
   z = mdl.integer_var(0, task_count, "z")
   mdl.minimize(y-z)
 
   for team in teams:
-     mdl.add_constraint(y >= (L[team] + mdl.sum(x[team][task] for task in tasks)))
+     mdl.add_constraint(y >= (L[team] + mdl.sum(x[(team, task)] for task in tasks)))
 
   for team in teams:
-    mdl.add_constraint(z <= (L[team] + mdl.sum(x[team][task] for task in tasks)))
+    mdl.add_constraint(z <= (L[team] + mdl.sum(x[(team, task)] for task in tasks)))
 
   for task in tasks:
-    mdl.add_constraint((mdl.sum(x[team][task] for team in teams)== k2))
+    mdl.add_constraint((mdl.sum(x[(team, task)] for team in teams)== k2))
 
   for team in teams:
     for task in tasks:
       if assignment[team][task] == 1 :
-        mdl.add_constraint((x[team][task] == 0))
+        mdl.add_constraint(x[(team, task)] == 0)
 
   msol = mdl.solve(TimeLimit = timelimit)
 
-  for team in teams:
-    for task in tasks:
-      x[team][task] = msol["x{}_{}".format(task, team)]
-  print "!" + str(msol["y"])
-  print "!" + str(msol["z"])
+  print msol["y"]
+  print msol["z"]
   return [msol["y"], msol["z"]]
 
 # ------------------------------------------
@@ -104,38 +86,38 @@ def expert(z_floor, z_ceil, w):
   mdl = Model()
   mdl.context.solver.agent = 'local'
   mdl.context.solver.log_output = True
-  # mdl. context.solver.verbose = 5
   timelimit = 10000
   L = [sum(assignment[team]) for team in teams]
-  x = [[mdl.integer_var(lb = 0, ub = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
+  #L_i is number of IFP's assigned to i
+  x = mdl.binary_var_matrix(team_count, task_count, name = "x")
 
   lst = []
   for team in teams:
-    lst.append(mdl.sum(x[team][task] * w[team][task] for task in tasks))
+    lst.append(mdl.sum(x[(team, task)] * w[team][task] for task in tasks))
 
   mdl.maximize(mdl.sum(lst))
 
   for team in teams:
-    mdl.add_constraint(z_floor <= mdl.sum(x[team][task] for task in tasks) + L[team])
-    mdl.add_constraint((mdl.sum(x[team][task] for task in tasks) + L[team])<= max(L[team], z_ceil))
+    mdl.add_constraint(z_floor <= mdl.sum(x[(team, task)] for task in tasks) + L[team])
+    mdl.add_constraint((mdl.sum(x[(team, task)] for task in tasks) + L[team])<= max(L[team], z_ceil))
 
   for task in tasks:
-    mdl.add_constraint((mdl.sum(x[team][task] for team in teams)== k2))
+    mdl.add_constraint((mdl.sum(x[(team, task)] for team in teams)== k2))
 
   for team in teams:
     for task in tasks:
       if assignment[team][task] == 1 :
-        mdl.add_constraint((x[team][task] == 0))
+        mdl.add_constraint((x[(team, task)] == 0))
 
   msol = mdl.solve(TimeLimit = timelimit)
-
 
   x = np.zeros((team_count, task_count))
   for team in teams:
     for task in tasks:
-      x[team][task] = msol["x{}_{}".format(task, team)]
+      x[team][task] = msol["x_{}_{}".format(team, task)]
 
   return x
+
 
 # ------------------------------------------
 # Make the skill matrix
@@ -168,8 +150,11 @@ def main():
   z = bal_sol[1]
   raw_input("Press Enter to continue...")
   w = make_skill(6, 5)
-  expert(z-1, z+1, w)
-  print w
+  x = expert(z-1, z+1, w)
+  # print w
+  # print x
+  # print(np.dot(x.flatten(), w.flatten()))
+
 
 if __name__ == "__main__":
     main()
