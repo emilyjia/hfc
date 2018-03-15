@@ -16,7 +16,7 @@ context.solver.agent = 'local'
 context.solver.local.execfile = '/Users/Emily/Documents/CPLEX_Studio128/cpoptimizer/bin/x86-64_osx/cpoptimizer'
 context.solver.log_output = True
 context.solver.verbose = 5
-timelimit = 10
+timelimit = 10000
 
 # ------------------------------------------
 # Constants
@@ -27,7 +27,7 @@ frac = 0.5
 # some fraction is made at random
 rand = 0.2
 # total number of teams
-team_count = 150
+team_count = 20
 teams = range(team_count)
 # number of tasks
 task_count = 5
@@ -51,18 +51,6 @@ def round_robin():
     for k in range(0, k1):
       assignment[next(order), ifp] = 1
 
-
-
-# ------------------------------------------
-# Set up the model
-# L is the number of tasks already assigned
-# x is indicator of assignment in this round
-# ------------------------------------------
-
-mdl = CpoModel()
-L = [sum(assignment[team]) for team in teams]
-
-
 # ------------------------------------------
 # Balanced Solution
 # x_{ij}: is task j assigned to team i
@@ -71,6 +59,13 @@ L = [sum(assignment[team]) for team in teams]
 # ------------------------------------------
 
 def balanced():
+  for i in range(10):
+    print "!==========================="
+  print "!STARTING BALANCE"
+  for i in range(10):
+    print "!==========================="
+  mdl = CpoModel()
+  L = [sum(assignment[team]) for team in teams]
   #L_i is number of IFP's assigned to i
   x = [[mdl.integer_var(min = 0, max = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
   y = mdl.integer_var(0, task_count, "y")
@@ -91,20 +86,25 @@ def balanced():
       if assignment[team][task] == 1 :
         mdl.add((x[team][task] == 0))
 
-  print("\nSolving model....")
   msol = mdl.solve(TimeLimit = timelimit)
 
   for team in teams:
     for task in tasks:
       x[team][task] = msol["x{}_{}".format(task, team)]
 
+  print "!" + str(msol["y"])
+  print "!" + str(msol["z"])
+
+  return [msol["y"], msol["z"]]
 
 # ------------------------------------------
 # Expert Solution
 # ------------------------------------------
 
-def expert(z_floor, z_ceil):
-  w = np.random.randint(5, size=(team_count, task_count)).tolist()
+
+def expert(z_floor, z_ceil, w):
+  mdl = CpoModel()
+  L = [sum(assignment[team]) for team in teams]
   x = [[mdl.integer_var(min = 0, max = 1, name="x{}_{}".format(task, team)) for task in tasks] for team in teams]
 
   lst = []
@@ -125,7 +125,36 @@ def expert(z_floor, z_ceil):
       if assignment[team][task] == 1 :
         mdl.add((x[team][task] == 0))
 
-  mdl.solve(TimeLimit = timelimit)
+  msol = mdl.solve(TimeLimit = timelimit)
+
+
+  x = np.zeros((team_count, task_count))
+  for team in teams:
+    for task in tasks:
+      x[team][task] = msol["x{}_{}".format(task, team)]
+
+  return x
+
+# ------------------------------------------
+# Make the skill matrix
+# ------------------------------------------
+
+def make_skill(skill_count, worker_count):
+  skills = range(skill_count)
+  workers = range(worker_count)
+  w = np.zeros((team_count, task_count))
+  team_skill = np.zeros((team_count, skill_count))
+  for team in teams:
+    for skill in skills:
+      skill_value = 0
+      for worker in workers:
+        skill_value += np.random.normal()
+      team_skill[team][skill] = skill_value
+  for task in tasks:
+    skill = np.random.randint(skill_count)
+    for team in teams:
+      w[team][task] = team_skill[team][skill]
+  return w
 
 # ------------------------------------------
 # Main
@@ -133,9 +162,12 @@ def expert(z_floor, z_ceil):
 
 def main():
   round_robin()
-  balanced()
-  #z = balanced()
-  #expert(z-1, z+1)
+  bal_sol = balanced()
+  z = bal_sol[1]
+  raw_input("Press Enter to continue...")
+  w = make_skill(6, 5)
+  expert(z-1, z+1, w)
+  print w
 
 if __name__ == "__main__":
     main()

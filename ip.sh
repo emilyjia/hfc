@@ -1,1 +1,1 @@
-python ip.py | grep -E --line-buffered "(!|\")"
+python ip.py | grep -E --line-buffered "(!)"
