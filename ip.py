@@ -85,7 +85,7 @@ def balanced():
 def expert(z_floor, z_ceil, w):
   mdl = Model()
   mdl.context.solver.agent = 'local'
-  mdl.context.solver.log_output = True
+  mdl.context.solver.log_output = False
   timelimit = 10000
   L = [sum(assignment[team]) for team in teams]
   #L_i is number of IFP's assigned to i

@@ -31,7 +31,12 @@ def small_balance_test(frac, rand, team_count, task_count, w):
   ip.task_count = task_count
   ip.tasks = range(task_count)
   ip.k1 = int(math.ceil(rand*frac*team_count))
+  print rand
+  print frac
+  print team_count
+  print ip.k1
   ip.k2 = int(math.ceil((1-rand)*frac*team_count))
+  print ip.k2
   ip.assignment = round_robin_test(ip.team_count, ip.task_count, ip.k1)
   ip.L = [sum(ip.assignment[team]) for team in ip.teams]
 
@@ -88,6 +93,7 @@ def tests():
   print "y computed correctly"
   assert np.all(sol[1][1] == 2)
   print "z computed correctly"
+  print w
   assert np.all(sol[2] == w)
   print "expert computed correctly"
   print "All tests done!"
