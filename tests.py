@@ -20,7 +20,23 @@ def round_robin_test(team_count, task_count, k1):
       assignment[next(order), ifp] = 1
   return assignment
 
-def tests():
+
+# ------------------------------------------
+# Checks the skill matrix reads file correctly
+# ------------------------------------------
+
+def make_skill_from_file_test():
+  test_ip = Task_assign([], team_count = 4)
+  skill_matrix = test_ip.make_skill_from_file("skill_file_test.csv", 3)
+  assert np.all(skill_matrix == [[2,1,2],[1,1,1],[0,1,0],[2,2,1]])
+  print "======================="
+  print "Make skill from file passed"
+
+# ------------------------------------------
+# Checks a 2-day ip assignment
+# ------------------------------------------
+
+def ip_tests():
   print "Starting Tests..."
   print "======================="
   assert np.all(round_robin_test(4, 2, 2) == [[1,0], [1,0], [0,1], [0,1]])
@@ -87,8 +103,12 @@ def tests():
       print "===================="
       print "Expert day1 passed!"
 
+def main():
+  ip_tests()
+  make_skill_from_file_test()
 
+if __name__ == "__main__":
+    main()
 
-tests()
 
 
