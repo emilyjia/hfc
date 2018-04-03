@@ -7,14 +7,15 @@ import math
 from docplex.mp.model import Model
 
 class Task_assign:
-  def __init__(self, assignment, frac = 0.5, rand = 0.2, team_count = 1500, task_count = 10, task_skill = [], day = 0):
+  def __init__(self, assignment, frac = 0.5, rand = 0.2, team_count = 1500, task_count = 10, task_skill = [], day = 0, skill = []):
     self.frac = frac
     self.rand = rand
     self.team_count = team_count
     self.task_count = task_count
     self.day = day
     self.assignment = assignment
-    self.skill = np.zeros((team_count, task_count))
+    self.skill = skill
+
     # get rid of expired tasks
     for i in range(self.day-30):
       self.assignment[:, i] = np.zeros(self.team_count)
@@ -79,7 +80,8 @@ class Task_assign:
 
     return mdl
 
-  def build_expert(self, z_floor, z_ceil, skill):
+# skill is self
+  def build_expert(self, z_floor, z_ceil):
     mdl = Model()
     mdl.context.solver.agent = 'local'
     mdl.context.solver.log_output = True
@@ -90,7 +92,7 @@ class Task_assign:
 
     lst = []
     for team in self.teams:
-      lst.append(mdl.sum(x[(team, task_index)] * skill[team][task_index] for task_index in self.task_indices))
+      lst.append(mdl.sum(x[(team, task_index)] * self.skill[team][task_index] for task_index in self.task_indices))
 
     mdl.maximize(mdl.sum(lst))
 
@@ -108,12 +110,12 @@ class Task_assign:
 
     return mdl
 
-
   # ------------------------------------------
   # Make the skill matrix
+  # We don't use this anymore
   # ------------------------------------------
 
-  def make_skill(self, skill_count, worker_count):
+  def make_skill_old(self, skill_count, worker_count):
     skills = range(skill_count)
     workers = range(worker_count)
     w = np.zeros((self.team_count, self.task_count))
@@ -130,25 +132,6 @@ class Task_assign:
         w[team][task] = team_skill[team][skill]
     return w
 
-  # ------------------------------------------
-  # Team by skill
-  # ------------------------------------------
-
-  def make_skill_from_file(self, file_name, skill_count):
-    input = pd.read_csv(file_name)
-    team_skill_matrix = np.zeros((self.team_count, skill_count))
-    for team in self.teams:
-      skill_row = input[input.team_no==team].sum()
-      for skill in range(skill_count):
-        skill_name = "knowcat_" + str(skill +1)
-        team_skill_matrix[team][skill] = skill_row[skill_name]
-    return team_skill_matrix
-
-  def make_team_task(self, team_skill_matrix, task_skill_list, skill_count):
-    team_task_matrix = np.zeros(self.team_count, self.task_count)
-    for team in self.teams:
-      for task in self.tasks:
-        team_task_matrix[team][task] = team_skill_matrix[team][task_skill_list[task]]
 
 def main():
   total_days = 1
@@ -166,10 +149,10 @@ def main():
     bal_mdl = day_ip.build_balanced()
     bal_sol = bal_mdl.solve(TimeLimit = timelimit)
 
-    skill = day_ip.make_skill(skill_count, worker_count)
+    # skill = day_ip.make_skill(skill_count, worker_count)
 
     z = bal_sol["z"]
-    exp_mdl = day_ip.build_expert(z-1, z+1, skill)
+    exp_mdl = day_ip.build_expert(z-1, z+1, day_ip.skill)
     exp_sol = exp_mdl.solve(TimeLimit = timelimit)
 
     for team in day_ip.teams:
