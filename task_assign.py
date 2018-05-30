@@ -8,18 +8,20 @@ from docplex.mp.model import Model
 import copy
 
 class Task_assign:
-  def __init__(self, assignment, frac = 0.5, rand = 0.2, team_count = 22, task_count = 10, day = 0, skill = []):
+  def __init__(self, assignment, frac = 0.5, rand = 0.2, team_count = 22, task_count = 10, day = 0, skill = [], batch=1):
     self.frac = frac
     self.rand = rand
     self.team_count = team_count
     self.task_count = task_count
     self.day = day
-    self.assignment = assignment
+    self.assignment = np.array(copy.deepcopy(assignment))
     self.skill = skill
+    self.batch = batch
 
     # get rid of expired tasks
-    for i in range(self.day-30):
-      self.assignment[:, i] = np.zeros(self.team_count)
+    if day > 30/batch:
+      for i in range((self.day-30/batch)*10*batch):
+        self.assignment[:, i] = np.zeros(self.team_count)
 
     self.teams = range(self.team_count)
     # tasks does not start at 0
@@ -43,7 +45,7 @@ class Task_assign:
     for task in self.tasks:
       for k in range(0, self.k1):
         self.assignment[next(order), task] = 1
-    return copy.deepcopy(self.assignment)
+    return np.array(copy.deepcopy(self.assignment))
 
 # ------------------------------------------
 # Balanced Solution
@@ -56,7 +58,7 @@ class Task_assign:
   def build_balanced(self):
     mdl = Model()
     mdl.context.solver.agent = 'local'
-    mdl.context.solver.log_output = True
+    mdl.context.solver.log_output = False
     timelimit = 10000
     # L_i is number of IFP's assigned to i
     # L = [sum(self.assignment[team, self.day*self.task_count: (self.day+1)*self.task_count]) for team in self.teams]
@@ -90,7 +92,7 @@ class Task_assign:
   def build_expert(self, z_floor, y):
     mdl = Model()
     mdl.context.solver.agent = 'local'
-    mdl.context.solver.log_output = True
+    mdl.context.solver.log_output = False
     timelimit = 10000
     L = [sum(self.assignment[team]) for team in self.teams]
     # print L

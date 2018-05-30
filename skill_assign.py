@@ -16,13 +16,13 @@ class Skill_assign:
     self.teams = range(team_count)
     self.tasks = range(task_count)
     self.team_skill_matrix = []
-    self.make_skill_from_file()
+    self.make_skill_from_file() # calculates total skill for each team
     self.prob_lst = []
-    self.make_prob_lst()
+    self.make_prob_lst() # generates probability distribution
     self.task_skill_lst = []
-    self.lst_from_prob()
+    self.lst_from_prob() # list of skills required
     self.team_task = []
-    self.make_team_task()
+    self.make_team_task() # matrix of teams, skill ability for task
 
   def make_skill_from_file(self):
     input = pd.read_csv(self.file_name)
